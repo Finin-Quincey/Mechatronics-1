@@ -2,7 +2,7 @@ classdef gantry < handle
     
     % The gantry class represents a 2-axis gantry controlled by 2 stepper
     % motors, each with an enable, direction and pulse signal.
-    % Upon creation, a Gantry object will set up the specified Arduino pins
+    % Upon creation, a gantry object will set up the specified Arduino pins
     % automatically (no more accidental moving as soon as you connect...!)
     % For now this is a single-speed, and you have to set the pulse input
     % manually.
@@ -33,7 +33,7 @@ classdef gantry < handle
     methods
        
         % Constructor
-        function this = Gantry(a, xEnablePin, xDirectionPin, xSwitchPin, yEnablePin, yDirectionPin, ySwitchPin)
+        function this = gantry(a, xEnablePin, xDirectionPin, xSwitchPin, yEnablePin, yDirectionPin, ySwitchPin)
             
             % Init fields
             this.a = a;
