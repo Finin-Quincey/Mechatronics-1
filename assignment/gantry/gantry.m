@@ -80,8 +80,36 @@ classdef gantry < handle
         
         function [] = stop(this)
             % Stops all gantry movement
+            stopX(this);
+            stopY(this);
+        end
+        
+        function [] = stopX(this)
+            % Stops the gantry x axis
             writeDigitalPin(this.a, this.xEnPin, 1);
+        end
+        
+        function [] = stopY(this)
+            % Stops the gantry y axis
             writeDigitalPin(this.a, this.yEnPin, 1);
+        end
+        
+        function [] = start(this, direction)
+            % Starts the gantry moving in the given direction (see the
+            % direction enum class)
+            if ~isnan(direction.x)
+                writeDigitalPin(this.a, this.xEnPin, 0);
+                writeDigitalPin(this.a, this.xDirPin, direction.x);
+            else
+                writeDigitalPin(this.a, this.xEnPin, 1);
+            end
+            
+            if ~isnan(direction.y)
+                writeDigitalPin(this.a, this.yEnPin, 0);
+                writeDigitalPin(this.a, this.yDirPin, direction.y);
+            else
+                writeDigitalPin(this.a, this.yEnPin, 1);
+            end
         end
         
         function this = move(this, x, y)
@@ -114,14 +142,14 @@ classdef gantry < handle
                     dx = dx-1;
                     this.pos(1) = this.pos(1) + sign(x);
                 else
-                    writeDigitalPin(this.a, this.xEnPin, 1);
+                    stopX(this);
                 end
                 
                 if dy > 0
                     dy = dy-1;
                     this.pos(2) = this.pos(2) + sign(y);
                 else
-                    writeDigitalPin(this.a, this.yEnPin, 1);
+                    stopY(this);
                 end
                 
                 pause(1/this.pollFreq);
@@ -144,11 +172,11 @@ classdef gantry < handle
                 ySwOpen = readDigitalPin(this.a, this.ySwPin);
                 
                 if ~xSwOpen
-                    writeDigitalPin(this.a, this.xEnPin, 1);
+                    stopX(this);
                 end
                 
                 if ~ySwOpen
-                    writeDigitalPin(this.a, this.yEnPin, 1);
+                    stopY(this);
                 end
                 
                 if ~xSwOpen && ~ySwOpen
