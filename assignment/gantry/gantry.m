@@ -16,6 +16,7 @@ classdef gantry < handle
     properties (SetAccess = private)
         
         % Pins
+        pulsePin
         xEnPin
         xDirPin
         xSwPin
@@ -33,11 +34,12 @@ classdef gantry < handle
     methods
        
         % Constructor
-        function this = gantry(a, xEnablePin, xDirectionPin, xSwitchPin, yEnablePin, yDirectionPin, ySwitchPin)
+        function this = gantry(a, tonePin, xEnablePin, xDirectionPin, xSwitchPin, yEnablePin, yDirectionPin, ySwitchPin)
             
             % Init fields
             this.a = a;
             
+            this.pulsePin = tonePin;
             this.xEnPin = xEnablePin;
             this.xDirPin = xDirectionPin;
             this.xSwPin = xSwitchPin;
@@ -46,6 +48,8 @@ classdef gantry < handle
             this.ySwPin = ySwitchPin;
             
             % Auto-configure pins because why not
+            configurePin(this.a, this.pulsePin, "PWM");
+            writePWMDutyCycle(this.a, this.pulsePin, 0.5);
             configurePin(this.a, this.xEnPin, "DigitalOutput");
             configurePin(this.a, this.xDirPin, "DigitalOutput");
             configurePin(this.a, this.xSwPin, "DigitalInput");
@@ -59,8 +63,8 @@ classdef gantry < handle
         
         function [] = pins(this)
             % Utility method to print out the pins, in case we forget!
-            
             fprintf("Gantry control pins:\n");
+            fprintf("Pulse: %s\n", this.pulsePin);
             fprintf("   Enable    Direction    Terminal Switch\n");
             fprintf("X: %s        %s           %s\n", this.xEnPin, this.xDirPin, this.xSwPin);
             fprintf("Y: %s        %s           %s\n", this.yEnPin, this.yDirPin, this.ySwPin);
