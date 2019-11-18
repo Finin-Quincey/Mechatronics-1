@@ -28,6 +28,10 @@ classdef gantry < handle
         
         % State variables
         pos = [nan, nan];
+        
+        % Calibration
+        limits = [nan, nan];
+        
     end
     
     % Public methods
@@ -158,24 +162,31 @@ classdef gantry < handle
             
         end
         
-        function this = home(this)
-            % Returns the gantry to its home position
+        function [this, dist] = home(this)
+            % Returns the gantry to its home position and optionally
+            % returns the number of updates each axis was active for
             
             writeDigitalPin(this.a, this.xDirPin, 0);
             writeDigitalPin(this.a, this.xEnPin, 0);
             writeDigitalPin(this.a, this.yDirPin, 0);
             writeDigitalPin(this.a, this.yEnPin, 0);
             
+            dist = [0, 0];
+            
             while true
                 
                 xSwOpen = readDigitalPin(this.a, this.xSwPin);
                 ySwOpen = readDigitalPin(this.a, this.ySwPin);
                 
-                if ~xSwOpen
+                if xSwOpen
+                    dist(1) = dist(1) + 1;
+                else
                     stopX(this);
                 end
                 
-                if ~ySwOpen
+                if ySwOpen
+                    dist(2) = dist(2) + 1;
+                else
                     stopY(this);
                 end
                 
@@ -190,9 +201,19 @@ classdef gantry < handle
         
         function this = calibrate(this)
             % Simple gantry calibration
-            % Moves the gantry to a predefined point and allows the user
-            % to enter its true coordinates (as measured with a ruler),
-            % then adjusts this gantry object's scale factor appropriately
+            % Allows the user to move the gantry to its end-of-travel, then
+            % re-homes it and records the time taken to do so.
+            this.stop;
+            % Release the motor so it's not doing any braking
+            writePWMDutyCycle(this.a, this.pulsePin, 1);
+            
+            response = questdlg("Move gantry manually to NE corner and click 'Done'", "Done", "Cancel");
+            
+            if response == "Done"
+                this.limits = this.home;
+            end
+            
+            writePWMDutyCycle(this.a, this.pulsePin, 0.5);
         end
         
     end
