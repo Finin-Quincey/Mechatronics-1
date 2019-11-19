@@ -1,8 +1,8 @@
 classdef gantryMode
     
     enumeration
-        PROGRAMMED("Programmed")
-        MANUAL("Manual")
+        PROGRAMMED("programmed")
+        MANUAL("manual")
     end
     
     properties(SetAccess = immutable)

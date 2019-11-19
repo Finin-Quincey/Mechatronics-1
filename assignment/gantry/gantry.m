@@ -64,7 +64,7 @@ classdef gantry < handle
             configurePin(this.a, this.yDirPin, "DigitalOutput");
             configurePin(this.a, this.ySwPin, "DigitalInput");
             
-            this.stop;
+            this.stop; % Make sure it doesn't move yet
             
         end
         
@@ -90,9 +90,23 @@ classdef gantry < handle
             result = sum(abs(this.motion)) > 0;
         end
         
-        function this = manualMode(this)
-            % Puts the gantry in manual control mode
-            this.mode = gantryMode.MANUAL;
+        function this = toggleMode(this)
+            
+            % Toggles the gantry control mode
+            % Manual control mode means the gantry handles its own updates,
+            % so you can operate it directly from the command window
+            % without it exceeding its limits
+            % Programmed mode means the gantry needs to be updated from a
+            % script or function via gantry.update, allowing that script or
+            % function to perform other logic while the gantry is moving
+            
+            if this.mode == gantryMode.MANUAL
+                this.mode = gantryMode.PROGRAMMED;
+            else
+                this.mode = gantryMode.MANUAL;
+            end
+            
+            fprintf("Gantry now in %s control mode\n", this.mode.name);
         end
         
         function [] = stop(this)
@@ -157,12 +171,14 @@ classdef gantry < handle
         end
         
         function this = move(this, x, y)
-            % Moves the gantry by the given vector
+            % Moves the gantry by the given displacement
             this.moveTo(this.pos(1) + x, this.pos(2) + y);
         end
         
         function this = moveTo(this, x, y)
+            
             % Moves the gantry to the given position
+            
             this.destination = [x, y];
             
             if sum(isnan(this.limits)) ~= 0
@@ -183,7 +199,7 @@ classdef gantry < handle
             
             % Updates the gantry
             % In programmed mode, this must be called from the main script
-            % n times a second
+            % n times a second (n=20 works well)
             
             hasDestination = sum(isnan(this.destination)) == 0;
             
@@ -219,6 +235,7 @@ classdef gantry < handle
         end
         
         function [this, dist] = home(this)
+            
             % Returns the gantry to its home position and optionally
             % returns the number of updates each axis was active for
             
