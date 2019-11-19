@@ -24,7 +24,7 @@ classdef gantry < handle
         yDirPin
         ySwPin
         
-        pollFreq = 100; % Poll frequency in Hz
+        pollFreq = 20; % Poll frequency in Hz, only used in MANUAL mode
         
         % State variables
         pos = [nan, nan];
@@ -118,7 +118,12 @@ classdef gantry < handle
         
         function this = move(this, x, y)
             % Moves the gantry by the given vector
-            % NB This is not calibrated yet!
+            
+            destination = this.pos + [x, y];
+            
+            if sum(destination > this.limits) + sum(destination < [0, 0]) ~= 0
+                error("Target position out of bounds!");
+            end
             
             writeDigitalPin(this.a, this.xDirPin, x > 0);
             writeDigitalPin(this.a, this.yDirPin, y > 0);
@@ -136,6 +141,8 @@ classdef gantry < handle
             dy = abs(y);
             
             while true
+                
+                tic;
                 
                 if dx == 0 && dy == 0
                     this.stop;
@@ -156,7 +163,9 @@ classdef gantry < handle
                     stopY(this);
                 end
                 
-                pause(1/this.pollFreq);
+                while toc < 1/this.pollFreq
+                    pause(0.00001);
+                end
                 
             end
             
@@ -173,27 +182,38 @@ classdef gantry < handle
             
             dist = [0, 0];
             
+            xHomed = false;
+            yHomed = false;
+            
             while true
+                
+                tic;
                 
                 xSwOpen = readDigitalPin(this.a, this.xSwPin);
                 ySwOpen = readDigitalPin(this.a, this.ySwPin);
                 
-                if xSwOpen
+                if xSwOpen && ~xHomed
                     dist(1) = dist(1) + 1;
                 else
                     stopX(this);
+                    xHomed = true;
                 end
                 
-                if ySwOpen
+                if ySwOpen && ~yHomed
                     dist(2) = dist(2) + 1;
                 else
                     stopY(this);
+                    yHomed = true;
                 end
                 
-                if ~xSwOpen && ~ySwOpen
+                if xHomed && yHomed
                     this.pos = [0, 0];
                     disp("Gantry at home position");
                     return;
+                end
+                
+                while toc < 1/this.pollFreq
+                    pause(0.00001);
                 end
                 
             end
@@ -207,13 +227,13 @@ classdef gantry < handle
             % Release the motor so it's not doing any braking
             writePWMDutyCycle(this.a, this.pulsePin, 1);
             
-            response = questdlg("Move gantry manually to NE corner and click 'Done'", "Done", "Cancel");
-            
-            if response == "Done"
-                this.limits = this.home;
-            end
+            response = questdlg("Move gantry manually to NE corner and click 'Done'", "Gantry Calibration", "Done", "Cancel", "Done");
             
             writePWMDutyCycle(this.a, this.pulsePin, 0.5);
+            
+            if response == "Done"
+                [~, this.limits] = this.home;
+            end
         end
         
     end
