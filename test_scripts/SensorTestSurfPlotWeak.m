@@ -811,18 +811,31 @@ y=V1(:,2);
 z=V1(:,3);
 
 %Used to perform interpolation on data set of scattered data
-%F = scatteredInterpolant(x,y,z);
+F = scatteredInterpolant(x,y,z);
 
 [xq,yq] = meshgrid(1:40,1:100);
 H=F(xq,yq);
-Vc = interp2(H,xq,yq,'cubic');
-Vm = interp2(H,xq,yq,'makima');
-Vs = interp2(H,xq,yq,'spline');
 
-surf(xq,yq,Vm);
+k=2;
 
-xlim([0 80])
-ylim([0 80])
-zlim([0,3])
+Vw = interpn(H,2,'cubic');
+[xw,yw] = meshgrid((1:157)/(k^2),(1:397)/(k^2));
+
+surf(xw,yw,Vw);
+
+%Put a threshold to find epicenter
+find(V1(:,3)<2.5)
+P1=V1(ans,:);
+hold on
+scatter3(P1(:,1),P1(:,2),P1(:,3),'xm'); %plot the values that are less than 2.5.
+
+EpiWeak= [mean(P1(:,1)),mean(P1(:,2))];
+
+scatter3(EpiWeak(1),EpiWeak(2),0);
 
 
+% xlim([0 300])
+% ylim([0 300])
+% zlim([0,3])
+
+%17.9cm = 396 units (human error)
