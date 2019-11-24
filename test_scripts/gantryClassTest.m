@@ -59,10 +59,7 @@ while true % Forever (until break statement)
     
     % Sensing, grabber arm and other logic might go here
     
-    % Each loop iteration must take 0.05s so wait until the timer reaches
-    % 0.05s
-    while(toc < updatePeriod)
-        pause(0.0001);
-    end
+    % Each loop iteration must take 0.05s so wait for the remaining time
+    pause(updatePeriod - toc);
     
 end
