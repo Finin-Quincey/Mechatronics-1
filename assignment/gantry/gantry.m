@@ -428,7 +428,7 @@ classdef gantry < handle
             % mode
             while true
                 
-                tic;
+                t = tic;
                 
                 this.update();
                 
@@ -436,7 +436,7 @@ classdef gantry < handle
                     break;
                 end
                 
-                while toc < 1/this.pollFreq
+                while toc(t) < 1/this.pollFreq
                     pause(0.00001);
                 end
                 
