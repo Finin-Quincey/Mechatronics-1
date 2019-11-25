@@ -8,7 +8,7 @@
 % iteration it checks if the gantry has finished moving and if so, it
 % starts it moving to the next point.
 
-g = gantry(a, "D6", "D2", "D3", "D4", "D5", "D7", "D8"); % Initialise gantry
+g = gantry(a, "D5", "D4", "D3", "D2", "D11", "D10", "D9", "D8"); % Initialise gantry
 g.mode = gantryMode.PROGRAMMED; % Allow this script to control the updates
 
 % This value is determined by the speed of the connection between MATLAB
@@ -20,17 +20,30 @@ g.calibrate;
 
 % A list of points to visit, in order
 pattern = [
-    20, 40;
-    20, 60;
-    40, 80;
-    60, 80;
-    80, 60;
-    80, 40;
-    60, 20;
-    40, 20;
-    20, 40;
+    100, 200;
+    100, 300;
+    200, 400;
+    300, 400;
+    400, 300;
+    400, 200;
+    300, 100;
+    200, 100;
+    100, 200;
     0, 0;
 ];
+
+% Relative vector version
+% pattern = [
+%     100, 300;
+%     100, 100;
+%     100, 0;
+%     100, -100;
+%     0, -100;
+%     -100, -100;
+%     -100, 0;
+%     -100, 100;
+%     0, 100;
+% ];
 
 i = 1; % Pattern index
 
