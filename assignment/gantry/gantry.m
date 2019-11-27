@@ -51,7 +51,7 @@ classdef gantry < handle
         pos = [0, 0];
         destination = [nan, nan];
         motion = [0, 0]; % Which direction each axis is currently moving: 1 = forwards, -1 = backwards, 0 = off
-        maxSpeed = 8; % Max speed during a movement in mm/s
+        maxSpeed = 15; % Max speed during a movement in mm/s
         
         % Calibration
         limits = [nan, nan];
@@ -278,9 +278,9 @@ classdef gantry < handle
             if travel(1) == travel(2)
                 velocity = [this.maxSpeed, this.maxSpeed];
             elseif travel(1) > travel(2)
-                velocity = [this.maxSpeed, this.maxSpeed * travel(2)/travel(1)];
+                velocity = [this.maxSpeed, this.maxSpeed * (travel(2)/travel(1))];
             else
-                velocity = [this.maxSpeed * travel(1)/travel(2), this.maxSpeed];
+                velocity = [this.maxSpeed * (travel(1)/travel(2)), this.maxSpeed];
             end
             
             writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(velocity(1)));
