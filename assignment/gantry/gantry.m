@@ -15,7 +15,7 @@ classdef gantry < handle
         pollFreq = 20; % Poll frequency in Hz, only used in MANUAL mode
         
         % Low pass filter characteristics
-        minDC = 0.02; % PWM duty cycle required for maximum oscillator frequency
+        minDC = 0.05; % PWM duty cycle required for maximum oscillator frequency
         maxDC = 1; % PWM duty cycle for minimum oscillator frequency
         minVcont = 0.8; % Min achievable voltage from filter
         maxVcont = 4.5; % Max achievable voltage from filter
@@ -23,21 +23,12 @@ classdef gantry < handle
         % Oscillator circuit parameters
         Vcc = 5; % Supply voltage (5V)
         C = 1e-6; % Capacitance in Farads
-        R1 = 5000; % Resistor 1, 5kOhms
-        R2 = 30; % Resistor 2, 30Ohms
+        R1 = 4700; % Resistor 1, 4.7kOhms
+        R2 = 33; % Resistor 2, 33Ohms
         
         % Gantry data
-        motorStepAngle = deg2rad(1.8);
-        pulleyRadius = 15.3; % mm
-        distancePerStep = gantry.motorStepAngle * gantry.pulleyRadius; % mm
-        
-        % == Replaced with symbolic math toolbox ==
-        
-        % Conversion from PWM duty cycle to oscillator frequency, see:
-        % https://electronics.stackexchange.com/questions/101530/what-is-the-equation-for-the-555-timer-control-voltage
-        %DCtoFreq = @(DC) 1 / (gantry.C * (gantry.R1 + gantry.R2) * log(1 + (5 * (DC - gantry.minDC))/(2 * (5 - 5 * (DC - gantry.minDC)))) + gantry.C * gantry.R2 * log(2));
-        % I used WolframAlpha to rearrange this, definitely not doing it by hand!
-        %freqToDC = @(f) (2 * gantry.minDC * exp((1 - gantry.C * f * gantry.R2 * log(2))/(gantry.minDC * f * (gantry.R2 + gantry.R1))) + 2 * exp((1 - gantry.C * f * gantry.R2 * log(2))/(gantry.C * f * (gantry.R2 + gantry.R1))) - gantry.minDC - 2)/(2 * exp((1 - gantry.C * f * gantry.R2 * log(2))/(gantry.C * f * (gantry.R2 + gantry.R1))) - 1);
+        distancePerPulse = 0.022;
+        slowDownDist = 3;
         
     end
     
@@ -50,25 +41,17 @@ classdef gantry < handle
     % Private fields
     properties (SetAccess = private)
         
-        % Pins
-        xPlsPin
-        xEnPin
-        xDirPin
-        xSwPin
-        yPlsPin
-        yEnPin
-        yDirPin
-        ySwPin
+        pins; % Pin configuration
+        
+        % Dummy rotary encoder objects for pulse counting
+        xEncoder;
+        yEncoder;
         
         % State variables
         pos = [0, 0];
         destination = [nan, nan];
-        origin = [nan, nan];
-        axisDirections = [0, 0]; % Which direction each axis is currently moving: 1 = forwards, -1 = backwards, 0 = off
-        velocity = [0, 0]; % Current speed in x and y in mm/s
-        maxSpeed = 1500; % Max speed during a movement in mm/s
-        acceleration = 2000; % Acceleration of the gantry in mm/s^2
-        timer = nan;
+        motion = [0, 0]; % Which direction each axis is currently moving: 1 = forwards, -1 = backwards, 0 = off
+        maxSpeed = 8; % Max speed during a movement in mm/s
         
         % Calibration
         limits = [nan, nan];
@@ -83,31 +66,33 @@ classdef gantry < handle
     methods
        
         % Constructor
-        function this = gantry(a, xEnablePin, xDirectionPin, xPulsePin, xSwitchPin, yEnablePin, yDirectionPin, yPulsePin, ySwitchPin)
+        function this = gantry(a, pins)
             
             % Init fields
             this.a = a;
             
-            this.xPlsPin = xPulsePin;
-            this.xEnPin = xEnablePin;
-            this.xDirPin = xDirectionPin;
-            this.xSwPin = xSwitchPin;
-            this.yPlsPin = yPulsePin;
-            this.yEnPin = yEnablePin;
-            this.yDirPin = yDirectionPin;
-            this.ySwPin = ySwitchPin;
+            this.pins = pins;
             
-            % Auto-configure pins because why not
-            configurePin(this.a, this.xPlsPin, "PWM");
-            writePWMDutyCycle(this.a, this.xPlsPin, 1);
-            configurePin(this.a, this.xEnPin, "DigitalOutput");
-            configurePin(this.a, this.xDirPin, "DigitalOutput");
-            configurePin(this.a, this.xSwPin, "DigitalInput");
-            configurePin(this.a, this.yPlsPin, "PWM");
-            writePWMDutyCycle(this.a, this.yPlsPin, 1);
-            configurePin(this.a, this.yEnPin, "DigitalOutput");
-            configurePin(this.a, this.yDirPin, "DigitalOutput");
-            configurePin(this.a, this.ySwPin, "DigitalInput");
+            % Auto-configure pins
+            configurePin(this.a, this.pins.xPls, "PWM");
+            writePWMDutyCycle(this.a, this.pins.xPls, gantry.maxDC);
+            configurePin(this.a, this.pins.xEn, "DigitalOutput");
+            configurePin(this.a, this.pins.xDir, "DigitalOutput");
+            configurePin(this.a, this.pins.xSw, "DigitalInput");
+            configurePin(this.a, this.pins.xInt1, "Interrupt");
+            configurePin(this.a, this.pins.xInt2, "Interrupt");
+            
+            configurePin(this.a, this.pins.yPls, "PWM");
+            writePWMDutyCycle(this.a, this.pins.yPls, gantry.maxDC);
+            configurePin(this.a, this.pins.yEn, "DigitalOutput");
+            configurePin(this.a, this.pins.yDir, "DigitalOutput");
+            configurePin(this.a, this.pins.ySw, "DigitalInput");
+            configurePin(this.a, this.pins.yInt1, "Interrupt");
+            configurePin(this.a, this.pins.yInt2, "Interrupt");
+            
+            % Set up encoder objects
+            this.xEncoder = rotaryEncoder(a, this.pins.xInt1, this.pins.xInt2);
+            this.yEncoder = rotaryEncoder(a, this.pins.yInt1, this.pins.yInt2);
             
             this.stop; % Make sure it doesn't move yet
             
@@ -127,23 +112,23 @@ classdef gantry < handle
             
         end
         
-        function [dc] = velocityToDC(v)
+        function [dc] = velocityToDC(this, v)
             % Converts the given velocity to a pulse pin duty cycle (sign
             % is ignored)
-            dc = double(gantry.freqToDC(max(abs(v), 1) / gantry.distancePerStep));
+            dc = double(this.freqToDC(max(abs(v), 1) / gantry.distancePerPulse));
+            dc = min(max(dc, 0), 1); % Clamp to between 0 and 1
         end
         
-        function [speed] = DCtoSpeed(dc)
+        function [speed] = DCtoSpeed(this, dc)
             % Converts the given pulse pin duty cycle to a speed
-            speed = double(gantry.DCToFreq(dc)) * gantry.distancePerStep;
+            dc = min(max(dc, 0), 1); % Clamp to between 0 and 1
+            speed = double(this.DCtoFreq(dc)) * gantry.distancePerPulse;
         end
         
-        function [] = pins(this)
+        function [] = printPins(this)
             % Utility method to print out the pins, in case we forget!
             fprintf("Gantry control pins:\n");
-            fprintf("   Enable    Direction    Pulse    Terminal Switch\n");
-            fprintf("X: %s        %s           %s       %s\n", this.xEnPin, this.xDirPin, this.xPlsPin, this.xSwPin);
-            fprintf("Y: %s        %s           %s       %s\n", this.yEnPin, this.yDirPin, this.yPlsPin, this.ySwPin);
+            this.pins.print();
         end
         
         function pos = whereAmI(this)
@@ -156,12 +141,12 @@ classdef gantry < handle
         
         function result = isMoving(this)
             % Returns true if the gantry is moving, false if it has stopped
-            result = sum(abs(this.axisDirections)) > 0;
+            result = sum(abs(this.motion)) > 0;
         end
         
         function this = setSpeed(this, speed)
             % Sets the speed of the gantry in mm/s
-            if speed > DCToSpeed(gantry.minDC)
+            if speed > this.DCtoSpeed(gantry.minDC)
                 error("The given speed exceeds the maximum speed of the gantry!");
             end
             
@@ -191,41 +176,42 @@ classdef gantry < handle
             % Stops all gantry movement
             stopX(this);
             stopY(this);
-            % Reset the timer so we don't think it's been ages since the
-            % last update when we next start moving
-            this.timer = nan;
         end
         
         function [] = stopX(this)
             % Stops the gantry x axis
-            writeDigitalPin(this.a, this.xEnPin, 1);
-            writePWMDutyCycle(this.a, this.xPlsPin, 1); % Set to minimum speed
-            this.axisDirections(1) = 0;
-            this.velocity(1) = 0;
+            writePWMDutyCycle(this.a, this.pins.xPls, this.maxDC); % Set to minimum speed
+            this.motion(1) = 0;
+            pause(0.01);
+            writeDigitalPin(this.a, this.pins.xEn, 1);
+            resetCount(this.xEncoder);
         end
         
         function [] = stopY(this)
             % Stops the gantry y axis
-            writeDigitalPin(this.a, this.yEnPin, 1);
-            writePWMDutyCycle(this.a, this.yPlsPin, 1); % Set to minimum speed
-            this.axisDirections(2) = 0;
-            this.velocity(2) = 0;
+            writePWMDutyCycle(this.a, this.pins.yPls, this.maxDC); % Set to minimum speed
+            this.motion(2) = 0;
+            pause(0.01);
+            writeDigitalPin(this.a, this.pins.yEn, 1);
+            resetCount(this.yEncoder);
         end
         
         function [] = startX(this, dir)
             % Starts the gantry x axis in the given direction
             % N.B. This only operates the enable/direction pins, not pulse
-            writeDigitalPin(this.a, this.xEnPin, 0);
-            writeDigitalPin(this.a, this.xDirPin, dir);
-            this.axisDirections(1) = dir * 2 - 1;
+            writeDigitalPin(this.a, this.pins.xDir, dir);
+            this.motion(1) = dir * 2 - 1;
+            pause(0.01);
+            writeDigitalPin(this.a, this.pins.xEn, 0);
         end
         
         function [] = startY(this, dir)
             % Starts the gantry y axis in the given direction
             % N.B. This only operates the enable/direction pins, not pulse
-            writeDigitalPin(this.a, this.yEnPin, 0);
-            writeDigitalPin(this.a, this.yDirPin, dir);
-            this.axisDirections(2) = dir * 2 - 1;
+            writeDigitalPin(this.a, this.pins.yDir, dir);
+            this.motion(2) = dir * 2 - 1;
+            pause(0.01);
+            writeDigitalPin(this.a, this.pins.yEn, 0);
         end
         
 %         function [] = start(this, direction)
@@ -267,14 +253,6 @@ classdef gantry < handle
             % Moves the gantry to the given position
             
             this.destination = [x, y];
-            this.origin = this.pos; % Record where we started from
-            
-            totalTravel = this.destination - this.origin;
-            speed = 1;
-            this.velocity = totalTravel / hypot(totalTravel(1), totalTravel(2)) * speed;
-            
-            this.startX(this.destination(1) > this.pos(1));
-            this.startY(this.destination(2) > this.pos(2));
             
             if sum(isnan(this.limits)) ~= 0
                 error("Gantry not calibrated yet!");
@@ -283,6 +261,30 @@ classdef gantry < handle
             if sum(this.destination > this.limits) + sum(this.destination < [0, 0]) ~= 0
                 error("Destination out of bounds!");
             end
+            
+            resetCount(this.xEncoder);
+            resetCount(this.yEncoder);
+            
+            travel = abs(this.destination - this.pos);
+            
+            if travel(1) > gantry.slowDownDist
+                this.startX(this.destination(1) > this.pos(1));
+            end
+            
+            if travel(2) > gantry.slowDownDist
+                this.startY(this.destination(2) > this.pos(2));
+            end
+            
+            if travel(1) == travel(2)
+                velocity = [this.maxSpeed, this.maxSpeed];
+            elseif travel(1) > travel(2)
+                velocity = [this.maxSpeed, this.maxSpeed * travel(2)/travel(1)];
+            else
+                velocity = [this.maxSpeed * travel(1)/travel(2), this.maxSpeed];
+            end
+            
+            writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(velocity(1)));
+            writePWMDutyCycle(this.a, this.pins.yPls, this.velocityToDC(velocity(2)));
             
             if this.mode == gantryMode.MANUAL
                 this.manualUpdate();
@@ -296,52 +298,45 @@ classdef gantry < handle
             % In programmed mode, this must be called from the main script
             % n times a second (n=20 works well)
             
-            if isnan(this.timer)
-                timeSinceLastUpdate = 1/this.pollFreq; % Fallback for first update
-            else
-                timeSinceLastUpdate = toc(this.timer);
-            end
-            
-            this.timer = tic;
+            dx = readCount(this.xEncoder, "Reset", true) * this.distancePerPulse;
+            dy = readCount(this.yEncoder, "Reset", true) * this.distancePerPulse;
             
             % Update the position of the gantry
             if this.isMoving
-                this.pos = this.pos + this.velocity * timeSinceLastUpdate;
+                this.pos = this.pos + this.motion .* [dx, dy];
             end
             
             hasDestination = sum(isnan(this.destination)) == 0;
             
             % Stop x axis if it hits the limits
-            if (this.velocity(1) < 0 && this.pos(1) == 0) || (this.velocity(1) > 0 && this.pos(1) == this.limits(1))
+            if (this.motion(1) < 0 && this.pos(1) <= 0) || (this.motion(1) > 0 && this.pos(1) >= this.limits(1))
                 this.stopX;
             end
             
             % Stop y axis if it hits the limits
-            if (this.velocity(2) < 0 && this.pos(2) == 0) || (this.velocity(2) > 0 && this.pos(2) == this.limits(2))
+            if (this.motion(2) < 0 && this.pos(2) <= 0) || (this.motion(2) > 0 && this.pos(2) >= this.limits(2))
                 this.stopY;
             end
             
             if hasDestination
                 
-                totalTravel = this.destination - this.origin;
-                travelDone = this.pos - this.origin;
                 travelLeft = this.destination - this.pos;
                 
-                totalDist = hypot(totalTravel(1), totalTravel(2));
-                distDone = hypot(travelDone(1), travelDone(2));
-                distLeft = hypot(travelLeft(1), travelLeft(2));
-                
-                % Enable/direction pin control
-                if distDone > totalDist
-                    this.stop;
+                if travelLeft(1) * this.motion(1) <= gantry.slowDownDist
+                   writePWMDutyCycle(this.a, this.pins.xPls, gantry.maxDC);
                 end
                 
-                speed = min(this.maxSpeed, sqrt(2 * this.acceleration * min(distDone, distLeft)));
+                if travelLeft(2) * this.motion(2) <= gantry.slowDownDist
+                   writePWMDutyCycle(this.a, this.pins.yPls, gantry.maxDC);
+                end
                 
-                this.velocity = totalTravel / totalDist * speed;
-                              
-                writePWMDutyCycle(this.a, this.xPlsPin, velocityToDC(this.velocity(1)));
-                writePWMDutyCycle(this.a, this.yPlsPin, velocityToDC(this.velocity(2)));
+                if travelLeft(1) * this.motion(1) <= 0
+                    this.stopX;
+                end
+                
+                if travelLeft(2) * this.motion(2) <= 0
+                    this.stopY;
+                end
                 
             end
             
@@ -352,13 +347,14 @@ classdef gantry < handle
             % Returns the gantry to its home position and optionally
             % returns the number of updates each axis was active for
             
-            writeDigitalPin(this.a, this.xDirPin, 0);
-            writeDigitalPin(this.a, this.xEnPin, 0);
-            writeDigitalPin(this.a, this.yDirPin, 0);
-            writeDigitalPin(this.a, this.yEnPin, 0);
+            resetCount(this.xEncoder);
+            resetCount(this.yEncoder);
             
-            writePWMDutyCycle(this.a, this.xPlsPin, gantry.freqToDC(this.maxSpeed / gantry.distancePerStep));
-            writePWMDutyCycle(this.a, this.yPlsPin, gantry.freqToDC(this.maxSpeed / gantry.distancePerStep));
+            this.startX(0);
+            this.startY(0);
+            
+            writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(this.maxSpeed));
+            writePWMDutyCycle(this.a, this.pins.yPls, this.velocityToDC(this.maxSpeed));
             
             dist = [0, 0];
             
@@ -369,19 +365,17 @@ classdef gantry < handle
                 
                 tic;
                 
-                xSwOpen = readDigitalPin(this.a, this.xSwPin);
-                ySwOpen = readDigitalPin(this.a, this.ySwPin);
+                xSwOpen = readDigitalPin(this.a, this.pins.xSw);
+                ySwOpen = readDigitalPin(this.a, this.pins.ySw);
                 
-                if xSwOpen && ~xHomed
-                    dist(1) = dist(1) + this.maxSpeed;
-                else
+                if ~xSwOpen && ~xHomed
+                    dist(1) = readCount(this.xEncoder) * this.distancePerPulse;
                     stopX(this);
                     xHomed = true;
                 end
                 
-                if ySwOpen && ~yHomed
-                    dist(2) = dist(2) + this.maxSpeed;
-                else
+                if ~ySwOpen && ~yHomed
+                    dist(2) = readCount(this.yEncoder) * this.distancePerPulse;
                     stopY(this);
                     yHomed = true;
                 end
@@ -404,14 +398,8 @@ classdef gantry < handle
             % Allows the user to move the gantry to its end-of-travel, then
             % re-homes it and records the time taken to do so.
             this.stop;
-            % Release the motors so they're not doing any braking
-            writePWMDutyCycle(this.a, this.xPlsPin, 1);
-            writePWMDutyCycle(this.a, this.yPlsPin, 1);
             
             response = questdlg("Move gantry manually to NE corner and click 'Done'", "Gantry Calibration", "Done", "Cancel", "Done");
-            
-            writePWMDutyCycle(this.a, this.xPlsPin, 0.5);
-            writePWMDutyCycle(this.a, this.yPlsPin, 0.5);
             
             if response == "Done"
                 [~, this.limits] = this.home;
@@ -442,6 +430,7 @@ classdef gantry < handle
                 
             end
         end
+        
     end
     
 end

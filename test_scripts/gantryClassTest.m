@@ -8,7 +8,25 @@
 % iteration it checks if the gantry has finished moving and if so, it
 % starts it moving to the next point.
 
-g = gantry(a, "D5", "D4", "D3", "D2", "D11", "D10", "D9", "D8"); % Initialise gantry
+clear all;
+a = arduino("COM5", "Mega2560", "Libraries", {"RotaryEncoder"});
+
+% Create pin configuration object and assign pins
+pins = gantryPins;
+pins.xEn = "D6";
+pins.xDir = "D8";
+pins.xPls = "D10";
+pins.xSw = "D12";
+pins.xInt1 = "D21";
+pins.xInt2 = "D20";
+pins.yEn = "D7";
+pins.yDir = "D9";
+pins.yPls = "D11";
+pins.ySw = "D13";
+pins.yInt1 = "D19";
+pins.yInt2 = "D18";
+
+g = gantry(a, pins); % Initialise gantry
 g.mode = gantryMode.PROGRAMMED; % Allow this script to control the updates
 
 % This value is determined by the speed of the connection between MATLAB
@@ -30,7 +48,7 @@ pattern = [
     200, 100;
     100, 200;
     0, 0;
-];
+] .* 0.5;
 
 % Relative vector version
 % pattern = [
