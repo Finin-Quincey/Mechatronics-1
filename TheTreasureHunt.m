@@ -20,9 +20,11 @@ updatePeriod = 0.05;
 %Initialise the Gantry position
 g.calibrate;
 
-if g.pos==[0 0]
-    break
+%Wait until key presses - see function!!!
+input('press to continue');
     
+%%%%INITIALISE the ARM & GRIPPER POSITIONS%%%%%
+
 %%%%%%%%%%%%%%SCAN FOR TREASURES%%%%%%%%%%%%%
 
 %ZigZagScan of the entire beach.
@@ -81,13 +83,61 @@ treasurePeaks = imregionalmax(beachScan); % returns the binary image that identi
 
 treasureCoord=[Xpeaks,Ypeaks]; %creates 2-columns matrix with x-y coordinates
 
-nbrTreasures=length(treasureCoord); %the number of treasures is equal to the nbr of peaks found
+%Classify from the furthest to closest 
+treasureOrder = sortrows(treasureCoord,2,'descend');
+%sorts A based on the columns specified in the vector column.
+%in descending order
 
-%%%%%%%%%%%%%% THE SHORTEST COLLECTION PATH %%%%%%%%%%%%%%
+numberTreasures=length(treasureCoord); %the number of treasures is equal to the nbr of peaks found
 
+%%%%%%%%%%%%%%%% COLLECTION OF CUPS, GO TO TREASURE & COVER IT %%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%% AND REPEAT UNTILL ALL TREASURES COVERED%%%%%%%%%%%%%%%%%%%%
 
+%2 stacks of cups located: 1. under home 2. just next to 1 in y direction
 
+stack1XY=[0 0]; %center of stack
+stack2XY=[0 80];
 
+nCups=5; %number of cups per stack
+% cupHeight=(38-7.5);% 24.5mm
+% betweenCups=13; %in mm 
+% maxHeight=(4*betweenCups)+cupgrabHeight; %topcup will be grabbed at%76.5
+% heightDiff= 7.5*2; %14mm
 
+cupHeights=[76.5 % topCup 1
+            62.5 % Cup 2
+            48.5 % Cup 3
+            34.5 % Cup 4
+            20.5]; %lastCup 5
+i=0;
+j=1;
+treasuresLeft=numberTreasures;
 
+while treasuresLeft>0 % while the is still some treasures to be covered.
+    for i=1:nCups & j=1:numberTreasures %if there is still some cups in stack 1
+        
+    g.moveTo(stack1XY);
+    height=cupHeight(i,1);
+    arm.movetoheight(this,height,down,pins); %lower the arm to top cup height.
+    gripper.grab; 
+    height=highPos;
+    arm.movetoheight(this,height,up,pins);% higher to high pos
+    
+    g.moveTo(treasureOrder(j,j));
+    
+    height=dropPos;
+    arm.movetoheight(this,height,down,pins);
+    gripper.release;
+    
+    height=highPos;
+    arm.movetoheight(this,height,down,pins);
+    
+    treasuresLeft= numberTreasures - 1;
+    i=i+1;
+    j=j+1;
+    else
+        g.moveTo(stack2XY);
+        end
+    end
+end
 
