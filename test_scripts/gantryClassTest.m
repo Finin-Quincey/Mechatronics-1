@@ -13,18 +13,18 @@ a = arduino("COM5", "Mega2560", "Libraries", {"RotaryEncoder"});
 
 % Create pin configuration object and assign pins
 pins = gantryPins;
-pins.xEn = "D6";
-pins.xDir = "D8";
-pins.xPls = "D10";
-pins.xSw = "D12";
-pins.xInt1 = "D21";
-pins.xInt2 = "D20";
-pins.yEn = "D7";
-pins.yDir = "D9";
-pins.yPls = "D11";
-pins.ySw = "D13";
-pins.yInt1 = "D19";
-pins.yInt2 = "D18";
+pins.xEn = "D49";
+pins.xDir = "D48";
+pins.xPls = "D46";
+pins.xSw = "D47";
+pins.xInt1 = "D20";
+pins.xInt2 = "D21";
+pins.yEn = "D42";
+pins.yDir = "D43";
+pins.yPls = "D44";
+pins.ySw = "D45";
+pins.yInt1 = "D18";
+pins.yInt2 = "D19";
 
 g = gantry(a, pins); % Initialise gantry
 g.mode = gantryMode.PROGRAMMED; % Allow this script to control the updates
