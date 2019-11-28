@@ -4,7 +4,7 @@
 
 %Setup the Arduino
 clear all
-george = arduino("COM5", "Mega2560", "Libraries", {"RotaryEncoder"});
+george = arduino("COM5", "Mega2560", "Libraries", "RotaryEncoder");
 
 % Create pin configuration object and assign pins
 pins = gantryPins;
@@ -43,7 +43,7 @@ input('press to continue');
 % 
 % %ZigZagScan of the entire beach.
 % %Outputs 3 matrices with signals detected from each sensor
- [v1Update,v2Update,v3Update] = zigzagScan(a, this.gantry,this.sensor1,this.sensor2,this.sensor3);
+[v1Update,v2Update,v3Update] = zigzagScan(george, g, sensor1, sensor2, sensor3);
 % 
 % %Interpolate the data
 % 

@@ -8,7 +8,6 @@
 % iteration it checks if the gantry has finished moving and if so, it
 % starts it moving to the next point.
 
-<<<<<<< Updated upstream
 clear all;
 a = arduino("COM5", "Mega2560", "Libraries", {"RotaryEncoder"});
 
@@ -28,14 +27,6 @@ pins.yInt1 = "D18";
 pins.yInt2 = "D19";
 
 g = gantry(a, pins); % Initialise gantry
-=======
-%Setup the Arduino
-clear
-george =arduino("COM5","Mega2560");
-
-%g = gantry(a, "D6", "D2", "D3", "D4", "D5", "D7", "D8"); % Initialise gantry
-g = gantry(george, "D9", "D11", "D10", "D8", "D7", "D6", "D4"); %Hélène SETUP
->>>>>>> Stashed changes
 g.mode = gantryMode.PROGRAMMED; % Allow this script to control the updates
 
 % This value is determined by the speed of the connection between MATLAB
@@ -43,7 +34,7 @@ g.mode = gantryMode.PROGRAMMED; % Allow this script to control the updates
 updatePeriod = 0.05;
 
 % Manually calibrate the gantry to set its limits (this also homes it)
-g.calibrate();
+g.calibrate;
 
 % A list of points to visit, in order
 pattern = [
@@ -82,7 +73,6 @@ while true % Forever (until break statement)
     % (such as detecting when it has reached the destination or the limit
     % of its travel)
     g.update();
-   
     
     if ~g.isMoving % If the gantry has finished moving (or hasn't started)
         
