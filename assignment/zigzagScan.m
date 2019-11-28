@@ -1,4 +1,4 @@
-function [v1Update,v2Update,v3Update] = zigzagScan(a, this.gantry,this.sensor1,this.sensor2,this.sensor3)
+function [v1Update,v2Update,v3Update] = zigzagScan(a, g, sensor1, sensor2, sensor3)
 %ZIGZAGMove makes the gantry move following a given pattern, 
 % records the magnetic field from the scanned area from the 3 Sensors &
 % applies the offsets of the sensor relative to the absolute gantry
@@ -22,30 +22,30 @@ res= 8.3; %in mm
 
 %Determine the pattern by a series of coordinates
 pattern=[0 0;
-    0 8.3
-    8.3 0
-    16.6 0
-    0 16.6
-    0 24.9
-    24.9 0
-    33.2 0
-    0 33.2
-    0 41.5
-    41.5 0
-    49.8 0
-    0 49.8
-    8.3 49.8
-    49.8 8.3
-    49.8 16.6
-    16.6 49.8
-    24.9 49.8
-    49.8 24.4
-    49.8 33.2
-    33.2 49.8
-    41.5 49.8
-    49.8 41.5
-    49.8 49.8
-    ];
+    0 8.3;
+    8.3 0;
+    16.6 0;
+    0 16.6;
+    0 24.9;
+    24.9 0;
+    33.2 0;
+    0 33.2;
+    0 41.5;
+    41.5 0;
+    49.8 0;
+    0 49.8;
+    8.3 49.8;
+    49.8 8.3;
+    49.8 16.6;
+    16.6 49.8;
+    24.9 49.8;
+    49.8 24.4;
+    49.8 33.2;
+    33.2 49.8;
+    41.5 49.8;
+    49.8 41.5;
+    49.8 49.8;
+    ].*10;
 
 %%%MOVE FOLLOWING THE PATTERN WHILE READING VOLTAGES%%%
 
@@ -77,7 +77,7 @@ while true% Forever (until break statement)
     v2(end+1,:)=V2;
     v3(end+1,:)=V3;
     
- if ~g.isMoving % If the gantry has finished moving (or hasn't started)
+    if ~g.isMoving % If the gantry has finished moving (or hasn't started)
         
         % End the loop if the pattern is finished
         if i > length(pattern)
@@ -90,7 +90,7 @@ while true% Forever (until break statement)
         i = i+1; % Move i to the next point in the pattern
         
     end
-            
+end       
 
 %%%CALIBRATE RECORDED DATA BY IMPLEMENTING OFFSETS%%%
 
@@ -106,24 +106,23 @@ d=60.6; %the distance between sensors in mm
 
 %Sensors offsets
 x1offset = -(d/2) ;
-y1offset = -(root((d^2)-((d/2)^2))/2;
+y1offset = -(sqrt((d^2)-((d/2)^2))/2);
 
 x2offset = (d/2);
-y2offset = -(root((d^2)-((d/2)^2))/2;
+y2offset = -(sqrt((d^2)-((d/2)^2))/2);
 
 x3offset= 0 ;
-y3offset=(root((d^2)-((d/2)^2))/2;
+y3offset=(sqrt((d^2)-((d/2)^2))/2);
 
 
 %Apply the offsets
 %This enables to have the sensing reading according to the absolute
 %position of the gantry g.pos.
 
-v1Update=[x1a+x1offset y1a+y1offset z1]; %gives us [x y z1]
-v2Update=[x2a+x2offset y2a+y2offset z2]; %gives us [x y z2]
-v3Update=[x3a+x3offset y3a+y3offset z3]; %gives us [x y z3]
+v1Update=[v1(1, :)+x1offset v1(2, :)+y1offset v1(3, :)]; %gives us [x y z1]
+v2Update=[v2(1, :)+x2offset v2(2, :)+y2offset v2(3, :)]; %gives us [x y z2]
+v3Update=[v3(1, :)+x3offset v3(2, :)+y3offset v3(3, :)]; %gives us [x y z3]
 
-end
 end
 
 
