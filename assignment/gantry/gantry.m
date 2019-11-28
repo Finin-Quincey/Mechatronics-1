@@ -27,7 +27,7 @@ classdef gantry < handle
         R2 = 33; % Resistor 2, 33Ohms
         
         % Gantry data
-        distancePerPulse = 0.022;
+        distancePerPulse = 0.0292;
         slowDownDist = 3;
         
     end
@@ -51,7 +51,7 @@ classdef gantry < handle
         pos = [0, 0];
         destination = [nan, nan];
         motion = [0, 0]; % Which direction each axis is currently moving: 1 = forwards, -1 = backwards, 0 = off
-        maxSpeed = 15; % Max speed during a movement in mm/s
+        maxSpeed = 30; % Max speed during a movement in mm/s
         
         % Calibration
         limits = [nan, nan];
@@ -251,44 +251,17 @@ classdef gantry < handle
         function this = moveTo(this, x, y)
             
             % Moves the gantry to the given position
-            
-            this.destination = [x, y];
+            % Will error if the position is outside the movement limits
             
             if sum(isnan(this.limits)) ~= 0
                 error("Gantry not calibrated yet!");
             end
             
-            if sum(this.destination > this.limits) + sum(this.destination < [0, 0]) ~= 0
+            if sum([x, y] > this.limits) + sum(this.destination < [0, 0]) ~= 0
                 error("Destination out of bounds!");
             end
             
-            resetCount(this.xEncoder);
-            resetCount(this.yEncoder);
-            
-            travel = abs(this.destination - this.pos);
-            
-            if travel(1) > gantry.slowDownDist
-                this.startX(this.destination(1) > this.pos(1));
-            end
-            
-            if travel(2) > gantry.slowDownDist
-                this.startY(this.destination(2) > this.pos(2));
-            end
-            
-            if travel(1) == travel(2)
-                velocity = [this.maxSpeed, this.maxSpeed];
-            elseif travel(1) > travel(2)
-                velocity = [this.maxSpeed, this.maxSpeed * (travel(2)/travel(1))];
-            else
-                velocity = [this.maxSpeed * (travel(1)/travel(2)), this.maxSpeed];
-            end
-            
-            writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(velocity(1)));
-            writePWMDutyCycle(this.a, this.pins.yPls, this.velocityToDC(velocity(2)));
-            
-            if this.mode == gantryMode.MANUAL
-                this.manualUpdate();
-            end
+            this.moveToInternal(x, y);
             
         end
         
@@ -344,6 +317,38 @@ classdef gantry < handle
         
         function [this, dist] = home(this)
             
+            % Homes the gantry (2-pass)
+            % Returns the gantry to its home position and optionally
+            % returns the number of updates each axis was active for
+            
+            [~, dist] = this.homeInternal(this.maxSpeed);
+            this.moveToInternal(25, 25);
+            this.manualUpdate;
+            this.homeInternal(10);
+            
+        end
+        
+        function this = calibrate(this)
+            % Simple gantry calibration
+            % Allows the user to move the gantry to its end-of-travel, then
+            % re-homes it and records the time taken to do so.
+            this.stop;
+            
+            response = questdlg("Move gantry manually to NE corner and click 'Done'", "Gantry Calibration", "Done", "Cancel", "Done");
+            
+            if response == "Done"
+                [~, this.limits] = this.home;
+            end
+        end
+        
+    end
+    
+    % Private methods
+    methods (Access = private)
+        
+        function [this, dist] = homeInternal(this, speed)
+            
+            % Internal home function (single-pass)
             % Returns the gantry to its home position and optionally
             % returns the number of updates each axis was active for
             
@@ -353,8 +358,8 @@ classdef gantry < handle
             this.startX(0);
             this.startY(0);
             
-            writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(this.maxSpeed));
-            writePWMDutyCycle(this.a, this.pins.yPls, this.velocityToDC(this.maxSpeed));
+            writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(speed));
+            writePWMDutyCycle(this.a, this.pins.yPls, this.velocityToDC(speed));
             
             dist = [0, 0];
             
@@ -393,23 +398,42 @@ classdef gantry < handle
             end
         end
         
-        function this = calibrate(this)
-            % Simple gantry calibration
-            % Allows the user to move the gantry to its end-of-travel, then
-            % re-homes it and records the time taken to do so.
-            this.stop;
+        function this = moveToInternal(this, x, y)
             
-            response = questdlg("Move gantry manually to NE corner and click 'Done'", "Gantry Calibration", "Done", "Cancel", "Done");
+            % Moves the gantry to the given position
+            % INTERNAL METHOD WITH NO SAFETY CHECKS!
             
-            if response == "Done"
-                [~, this.limits] = this.home;
+            this.destination = [x, y];
+            
+            resetCount(this.xEncoder);
+            resetCount(this.yEncoder);
+            
+            travel = abs(this.destination - this.pos);
+            
+            if travel(1) > gantry.slowDownDist
+                this.startX(this.destination(1) > this.pos(1));
             end
+            
+            if travel(2) > gantry.slowDownDist
+                this.startY(this.destination(2) > this.pos(2));
+            end
+            
+            if travel(1) == travel(2)
+                velocity = [this.maxSpeed, this.maxSpeed];
+            elseif travel(1) > travel(2)
+                velocity = [this.maxSpeed, this.maxSpeed * (travel(2)/travel(1))];
+            else
+                velocity = [this.maxSpeed * (travel(1)/travel(2)), this.maxSpeed];
+            end
+            
+            writePWMDutyCycle(this.a, this.pins.xPls, this.velocityToDC(velocity(1)));
+            writePWMDutyCycle(this.a, this.pins.yPls, this.velocityToDC(velocity(2)));
+            
+            if this.mode == gantryMode.MANUAL
+                this.manualUpdate();
+            end
+            
         end
-        
-    end
-    
-    % Private methods
-    methods (Access = private)
         
         function this = manualUpdate(this)
             % Internal function to update the gantry while moving in manual
