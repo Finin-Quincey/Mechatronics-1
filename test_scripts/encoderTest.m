@@ -6,10 +6,13 @@ freq = zeros(1, 100);
 
 h = plot(freq);
 
+ylim([0, 2000]);
+grid on;
+
 count = 0;
 
 clear encoder;
-encoder = rotaryEncoder(a, "D18", "D19");
+encoder = rotaryEncoder(a, "D20", "D21");
 
 resetCount(encoder);
 
