@@ -46,16 +46,11 @@ z1=v1(:,3);
 z2=v2(:,3);
 z3=v3(:,3);
 
-[xq,yq] = meshgrid(x,y); % returns 3-D grid coordinates defined by the vectors x, y, and z
+[xq,yq] = meshgrid(1:0.2:length(x),1:0.2:length(y)); % returns 3-D grid coordinates defined by the vectors x, y, and z
 
 G1 = griddata(x,y,z1,xq,yq,'cubic');
 G2 = griddata(x,y,z2,xq,yq,'cubic');
 G3 = griddata(x,y,z3,xq,yq,'cubic');
-
-surf(xq,yq,G1) %Surfplot
-hold on
-surf(xq,yq,G2)
-surf(xq,yq,G3)
 
 %Apply a threshold
 %Removes all data points that are below 2.6
@@ -91,7 +86,7 @@ surf(xq,yq,G2)
 surf(xq,yq,G3)
 colorbar
 
-
+%%Fom this, determine the EPICENTERS%%
 
  
 

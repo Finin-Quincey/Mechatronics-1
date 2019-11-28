@@ -1,7 +1,7 @@
 %%%RESULTS 3 SENSORS IN A LINE WORKING TOGHETHER%%%
 
 %Sensor 1%
-Va= [20	20	2.497556207
+v1= [20	20	2.497556207
 20	21	2.497556207
 20	22	2.497556207
 20	23	2.497556207
@@ -894,7 +894,7 @@ Va= [20	20	2.497556207
 ];
 
 %Sensor 2%
-Vb=[20	20	2.482893451
+v2=[20	20	2.482893451
 20	21	2.482893451
 20	22	2.482893451
 20	23	2.482893451
@@ -1787,7 +1787,7 @@ Vb=[20	20	2.482893451
 ];
 
 %Sensor 3%
-Vc= [20	20	2.536656891
+v3= [20	20	2.536656891
 20	21	2.536656891
 20	22	2.536656891
 20	23	2.536656891
@@ -2679,7 +2679,101 @@ Vc= [20	20	2.536656891
 39	50	2.541544477
 ];
 
-scatter3(Va(:,1),Va(:,2),Va(:,3));
-hold on
-scatter3(Vb(:,1),Vb(:,2),Vb(:,3),'o','r');
-scatter3(Vc(:,1),Vc(:,2),Vc(:,3),'o','g');
+% scatter3(Va(:,1),Va(:,2),Va(:,3));
+% hold on
+% scatter3(Vb(:,1),Vb(:,2),Vb(:,3),'o','r');
+% scatter3(Vc(:,1),Vc(:,2),Vc(:,3),'o','g');
+
+%Assign columns to a variable
+x=v1(:,1);
+y=v1(:,2);
+z1=v1(:,3);
+z2=v2(:,3);
+z3=v3(:,3);
+
+
+for i = 1:size(z1, 1)
+    for j= 1:size(z1, 2)
+        if z1(i,j) < 2.55
+            z1(i,j) = 0;
+        end
+    end
+end
+
+for i = 1:size(z2, 1)
+    for j= 1:size(z2, 2)
+        if z2(i,j) < 2.55
+            z2(i,j) = 0;
+        end
+    end
+end
+
+for i = 1:size(z3, 1)
+    for j= 1:size(z3, 2)
+        if z3(i,j) < 2.55
+            z3(i,j) = 0;
+        end
+    end
+end
+
+[xq,yq] = meshgrid(1:0.2:length(x),1:0.2:length(y)); % returns 3-D grid coordinates defined by the vectors x, y, and z
+
+G1 = griddata(x,y,z1,xq,yq,'cubic');
+G2 = griddata(x,y,z2,xq,yq,'cubic');
+G3 = griddata(x,y,z3,xq,yq,'cubic'); 
+
+for i = 1:size(G1, 1)
+    for j= 1:size(G1, 2)
+        if G1(i,j) < 2
+            G1(i,j) = 0;
+        end
+    end
+end
+
+%Apply a threshold
+%Removes all data points that are below 2.55
+
+% for i = 1:size(G1, 1)
+%     for j= 1:size(G1, 2)
+%         if G1(i,j) < 2.55
+%             G1(i,j) = 0;
+%         end
+%     end
+% end
+% 
+% 
+% for i = 1:size(G2, 1)
+%     for j = 1:size(G2, 2)
+%         if G2(i,j) < 2.55
+%             G2(i,j) = 0;
+%         end
+%     end
+% end
+% 
+% for i = 1:size(G3, 1)
+%     for j = 1:size(G3, 2)
+%         if G3(i,j) < 2.55
+%             G3(i,j) = 0;
+%         end
+%     end
+% end
+
+% beachScan=G1+G2+G3; 
+% treasurePeaks = imregionalmax(beachScan);
+
+% surf(xq,yq,G1)
+% hold on
+% surf(xq,yq,G2)
+% surf(xq,yq,G3)
+%colorbar
+
+%%Find Epicenters from the treasures
+
+%for each g.pos, get the average of data from each sensor
+
+% zValues=[G1,G2,G3]; %put the 3 sets of data from the sensors in 1 matrix
+% avgZ = mean(zValues,2); %get the average of the 3 for each row
+% beachScan= [xq,zq,avgZ]; %allocate that average to corresponding g.pos
+
+% treasurePeaks = imregionalmax(avgZ);
+% plot3(xq,yq,avgZ)
