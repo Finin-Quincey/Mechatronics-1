@@ -9,7 +9,7 @@
 % starts it moving to the next point.
 
 clear all;
-a = arduino("COM5", "Mega2560", "Libraries", {"RotaryEncoder"});
+a = arduino;%("COM5", "Mega2560", "Libraries", "RotaryEncoder");
 
 % Create pin configuration object and assign pins
 pins = gantryPins;

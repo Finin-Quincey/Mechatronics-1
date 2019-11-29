@@ -9,7 +9,7 @@ function [v1Update,v2Update,v3Update] = zigzagScan(a, g, sensor1, sensor2, senso
 %A, THIS.GANTRY,THIS.SENSOR1,THIS.SENSOR2,THIS.SENSOR3 - objects used in
 %the function (Their setup not included)
 
-%%%%OUTPUTS%%%
+%%%%OUTPUTS%%%\\
 %3 matrices: one for each sensors
 % each matrix in the format:[g.posX,g.posY,voltages];
 % Offset considered to get aboslute position for each voltages reading of
@@ -21,31 +21,35 @@ Yarea=500; %in mm
 res= 8.3; %in mm 
 
 %Determine the pattern by a series of coordinates
-pattern=[0 0;
-    0 8.3;
-    8.3 0;
-    16.6 0;
-    0 16.6;
-    0 24.9;
-    24.9 0;
-    33.2 0;
-    0 33.2;
-    0 41.5;
-    41.5 0;
-    49.8 0;
-    0 49.8;
-    8.3 49.8;
-    49.8 8.3;
-    49.8 16.6;
-    16.6 49.8;
-    24.9 49.8;
-    49.8 24.4;
-    49.8 33.2;
-    33.2 49.8;
-    41.5 49.8;
-    49.8 41.5;
-    49.8 49.8;
-    ].*10;
+% pattern=[0 0;
+%     0 8.3;
+%     8.3 0;
+%     16.6 0;
+%     0 16.6;
+%     0 24.9;
+%     24.9 0;
+%     33.2 0;
+%     0 33.2;
+%     0 41.5;
+%     41.5 0;
+%     49.8 0;
+%     0 49.8;
+%     8.3 49.8;
+%     49.8 8.3;
+%     49.8 16.6;
+%     16.6 49.8;
+%     24.9 49.8;
+%     49.8 24.4;
+%     49.8 33.2;
+%     33.2 49.8;
+%     41.5 49.8;
+%     49.8 41.5;
+%     49.8 49.8;
+%     ];
+
+y = 
+
+%pattern = generateZigzag(100, min(g.limits));
 
 %%%MOVE FOLLOWING THE PATTERN WHILE READING VOLTAGES%%%
 
@@ -84,6 +88,8 @@ while true% Forever (until break statement)
             break;
         end
         
+        pause(0.25); % Brief pause to allow the gantry to change direction more smoothly
+        
         % Start the gantry moving towards the ith point in the pattern
         g.moveTo(pattern(i, 1), pattern(i, 2));
         
@@ -96,32 +102,37 @@ end
 
 %%Initialise relative position to each other%%
 %Sensors in a triangular configuration:
-%      S3
+% S3
 
-%     0,0
+%    0,0   S2
 
-%S1          S2
+% S1
 
-d=60.6; %the distance between sensors in mm 
+d=50.6; %the distance between sensors in mm 
+
+% Triangle calcs
+a = 1/3 * sqrt(0.75) * d;
+b = 2/3 * sqrt(0.75) * d;
+c = d/2;
 
 %Sensors offsets
-x1offset = -(d/2) ;
-y1offset = -(sqrt((d^2)-((d/2)^2))/2);
+x1offset = -c;
+y1offset = -a;
 
-x2offset = (d/2);
-y2offset = -(sqrt((d^2)-((d/2)^2))/2);
+x2offset = b;
+y2offset = 0;
 
-x3offset= 0 ;
-y3offset=(sqrt((d^2)-((d/2)^2))/2);
+x3offset = c;
+y3offset = -a;
 
 
 %Apply the offsets
 %This enables to have the sensing reading according to the absolute
 %position of the gantry g.pos.
 
-v1Update=[v1(1, :)+x1offset v1(2, :)+y1offset v1(3, :)]; %gives us [x y z1]
-v2Update=[v2(1, :)+x2offset v2(2, :)+y2offset v2(3, :)]; %gives us [x y z2]
-v3Update=[v3(1, :)+x3offset v3(2, :)+y3offset v3(3, :)]; %gives us [x y z3]
+v1Update=[v1(:, 1)+x1offset v1(:, 2)+y1offset v1(:, 3)]; %gives us [x y z1]
+v2Update=[v2(:, 1)+x2offset v2(:, 2)+y2offset v2(:, 3)]; %gives us [x y z2]
+v3Update=[v3(:, 1)+x3offset v3(:, 2)+y3offset v3(:, 3)]; %gives us [x y z3]
 
 end
 
