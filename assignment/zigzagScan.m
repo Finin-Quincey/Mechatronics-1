@@ -1,26 +1,28 @@
-function [v1Update,v2Update,v3Update] = zigzagScan(a, g, sensor1, sensor2, sensor3)
-%ZIGZAGMove makes the gantry move following a given pattern, 
+function [v1Update,v2Update,v3Update] = zigzagScan(g, sensor1, sensor2, sensor3)
+
+% ZIGZAGSCAN Move makes the gantry move following a zigzag pattern, 
 % records the magnetic field from the scanned area from the 3 Sensors &
 % applies the offsets of the sensor relative to the absolute gantry
 % position g.pos to obtain the voltages recorded from each sensor for given
 % positions.
 
-%%%%INPUTS:%%%%
-%A, THIS.GANTRY,THIS.SENSOR1,THIS.SENSOR2,THIS.SENSOR3 - objects used in
-%the function (Their setup not included)
+%% INPUTS %%
+% A, THIS.GANTRY, THIS.SENSOR1, THIS.SENSOR2, THIS.SENSOR3 - objects used in
+% the function (Their setup not included)
 
-%%%%OUTPUTS%%%\\
-%3 matrices: one for each sensors
-% each matrix in the format:[g.posX,g.posY,voltages];
+%% OUTPUTS %%
+% 3 matrices: one for each of the sensors
+% Each matrix in the format: [x coords, y coords, voltages];
 % Offset considered to get aboslute position for each voltages reading of
-%each sensor
+% each sensor
 
-%Initialise the parameters
-Xarea=500; %in mm
-Yarea=500; %in mm
-res= 8.3; %in mm 
+%% INITIALISE SCAN PARAMETERS %%
+% The area is now determined from the gantry limits directly
+% Xarea = 500; %in mm
+% Yarea = 500; %in mm
+res = 100; % Spacing between scan lines in mm
 
-%Determine the pattern by a series of coordinates
+% Old harcoded test pattern; we now generate this dynamically (see below)
 % pattern=[0 0;
 %     0 8.3;
 %     8.3 0;
@@ -45,26 +47,21 @@ res= 8.3; %in mm
 %     41.5 49.8;
 %     49.8 41.5;
 %     49.8 49.8;
-%     ];
+% ];
 
-y = 
+% Generate the scan pattern (this function just does some geometry)
+pattern = generateZigzag(res, min(g.limits));
 
-%pattern = generateZigzag(100, min(g.limits));
+%% MOVE FOLLOWING THE PATTERN WHILE READING VOLTAGES %%
 
-%%%MOVE FOLLOWING THE PATTERN WHILE READING VOLTAGES%%%
+% Create initial matrices
+v1 = zeros(1,3);
+v2 = zeros(1,3);
+v3 = zeros(1,3);
 
-%Create initial matrices
-v1= zeros(1,3);
-v2= zeros(1,3);
-v3= zeros(1,3);
+i = 1; % Init counter
 
-V1=[];
-V2=[];
-V3=[];
-
-i=1;
-
-while true% Forever (until break statement)
+while true % Forever (until break statement)
     
     tic; % Start the timer
     
@@ -73,13 +70,13 @@ while true% Forever (until break statement)
     % of its travel)
     g.update();
     
-    V1 = [g.pos,sensor1.Read()]; %Sensor recorded voltage relative to gantry position 
+    V1 = [g.pos,sensor1.Read()]; % Sensor recorded voltage relative to gantry position 
     V2 = [g.pos,sensor2.Read()];
     V3 = [g.pos,sensor3.Read()];
     
-    v1(end+1,:)=V1; %Insert the voltage for given position to the matrix
-    v2(end+1,:)=V2;
-    v3(end+1,:)=V3;
+    v1(end+1,:) = V1; % Insert the voltage for given position to the matrix
+    v2(end+1,:) = V2; % ... and for sensor 2
+    v3(end+1,:) = V3; % ... and for sensor 3
     
     if ~g.isMoving % If the gantry has finished moving (or hasn't started)
         
@@ -88,34 +85,38 @@ while true% Forever (until break statement)
             break;
         end
         
-        pause(0.25); % Brief pause to allow the gantry to change direction more smoothly
+        % Brief pause to allow the gantry to change direction more smoothly
+        % Costs us some time but should minimise drifting of the gantry pos
+        pause(0.25);
         
         % Start the gantry moving towards the ith point in the pattern
         g.moveTo(pattern(i, 1), pattern(i, 2));
         
-        i = i+1; % Move i to the next point in the pattern
+        i = i + 1; % Move counter to the next point in the pattern
         
     end
 end       
 
-%%%CALIBRATE RECORDED DATA BY IMPLEMENTING OFFSETS%%%
+%% ALIGN RECORDED DATA FROM EACH SENSOR BY APPLYING OFFSETS %%
 
-%%Initialise relative position to each other%%
-%Sensors in a triangular configuration:
-% S3
+% Initialise relative position to each other
 
-%    0,0   S2
+% Sensors in a triangular configuration:
 
-% S1
+% S3            (Orange)
 
-d=50.6; %the distance between sensors in mm 
+%    0,0   S2   (Blue)
+
+% S1            (Grey)
+
+d = 50.6; % The distance between sensors in mm (each side of the triangle)
 
 % Triangle calcs
 a = 1/3 * sqrt(0.75) * d;
 b = 2/3 * sqrt(0.75) * d;
 c = d/2;
 
-%Sensors offsets
+% Assign sensor offsets
 x1offset = -c;
 y1offset = -a;
 
@@ -126,13 +127,13 @@ x3offset = c;
 y3offset = -a;
 
 
-%Apply the offsets
-%This enables to have the sensing reading according to the absolute
-%position of the gantry g.pos.
+% Apply the offsets
+% This enables to have the sensing reading according to the absolute
+% position of the gantry g.pos.
 
-v1Update=[v1(:, 1)+x1offset v1(:, 2)+y1offset v1(:, 3)]; %gives us [x y z1]
-v2Update=[v2(:, 1)+x2offset v2(:, 2)+y2offset v2(:, 3)]; %gives us [x y z2]
-v3Update=[v3(:, 1)+x3offset v3(:, 2)+y3offset v3(:, 3)]; %gives us [x y z3]
+v1Update=[v1(:, 1)+x1offset v1(:, 2)+y1offset v1(:, 3)]; % gives us [x y z1]
+v2Update=[v2(:, 1)+x2offset v2(:, 2)+y2offset v2(:, 3)]; % gives us [x y z2]
+v3Update=[v3(:, 1)+x3offset v3(:, 2)+y3offset v3(:, 3)]; % gives us [x y z3]
 
 end
 

@@ -1,6 +1,10 @@
 classdef gantryPins < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    
+    % GANTRYPINS Simple class that stores a set of gantry pins
+    % Allows the gantry pins to be declared in a more readable fashion
+    % whilst still requiring them to be initialised in the gantry
+    % constructor. Also allows multiple pin configurations to be stored and
+    % switched between without reinitialising the gantry.
     
     properties
         xPls

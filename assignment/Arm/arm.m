@@ -1,7 +1,7 @@
 classdef arm < handle
     
-    % ARM controls the height of the gripper.
-    % Programmed to be set in 3 different positions: low, high and drop cup.
+    % ARM controls the height of the gripper arm
+    % Programmed to be set in 3 different positions: low, high and drop cup
     % Powered by an RC servo motor.
     
     % Constants
@@ -13,11 +13,10 @@ classdef arm < handle
         reverseSpeed = 145; % deg/s
         offDC = 0.21;
         
-        minRotTime = 0.3; %s
+        minRotTime = 0.3; % s
         
-        % THESE NEED CALIBRATING!
-        singleCupHeight = 30; % mm
-        cupVerticalSpacing = 10; % mm
+        singleCupAngle = 40; % deg
+        cupAngularSpacing = 20; % deg
         
     end
     
@@ -69,7 +68,7 @@ classdef arm < handle
         function this = pickupHeight(this, n)
             % Moves the arm to the appropriate height to pick up a cup from
             % the top of a stack of n cups
-            this.rotateTo();
+            this.rotateTo(180 - (arm.singleCupAngle + arm.cupAngularSpacing * n));
         end
         
         function this = stopMotor(this)
@@ -78,12 +77,14 @@ classdef arm < handle
         end
         
         function this = rotateTo(this, angle)
-            
+            % Rotates the motor to the given angular position (0 is UP)
             this.rotateMotor(angle - this.currentAngle);
             
         end
         
         function this = rotateMotor(this, angle)
+            
+            % Rotates the motor by the given angle (positive is CW, negative is ACW)
             
             tic;
             
