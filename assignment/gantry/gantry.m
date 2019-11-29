@@ -29,6 +29,7 @@ classdef gantry < handle
         % Gantry data
         distancePerPulse = 0.0292;
         slowDownDist = 3;
+        errorMargin = 8;
         
     end
     
@@ -410,11 +411,11 @@ classdef gantry < handle
             
             travel = abs(this.destination - this.pos);
             
-            if travel(1) > gantry.slowDownDist
+            if travel(1) > gantry.errorMargin
                 this.startX(this.destination(1) > this.pos(1));
             end
             
-            if travel(2) > gantry.slowDownDist
+            if travel(2) > gantry.errorMargin
                 this.startY(this.destination(2) > this.pos(2));
             end
             
