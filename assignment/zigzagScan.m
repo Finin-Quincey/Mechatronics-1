@@ -49,8 +49,33 @@ res = 100; % Spacing between scan lines in mm
 %     49.8 49.8;
 % ];
 
+pattern = [
+    0, 0;
+    0, 1;
+    0.1, 1;
+    0.1, 0;
+    0.2, 0;
+    0.2, 1;
+    0.3, 1;
+    0.3, 0;
+    0.4, 0;
+    0.4, 1;
+    0.5, 1;
+    0.5, 0;
+    0.6, 0;
+    0.6, 1;
+    0.7, 1;
+    0.7, 0;
+    0.8, 0;
+    0.8, 1;
+    0.9, 1;
+    0.9, 0;
+    1, 0;
+    1, 1
+] .* min(g.limits);
+
 % Generate the scan pattern (this function just does some geometry)
-pattern = generateZigzag(res, min(g.limits));
+%pattern = generateZigzag(res, min(g.limits));
 
 %% MOVE FOLLOWING THE PATTERN WHILE READING VOLTAGES %%
 
@@ -94,7 +119,10 @@ while true % Forever (until break statement)
         
         i = i + 1; % Move counter to the next point in the pattern
         
+    else
+        pause(0.05 - toc);
     end
+    
 end       
 
 %% ALIGN RECORDED DATA FROM EACH SENSOR BY APPLYING OFFSETS %%
