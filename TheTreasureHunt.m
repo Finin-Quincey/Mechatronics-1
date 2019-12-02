@@ -32,7 +32,7 @@ gripper = gripper(george, "D4");
 g.mode = gantryMode.PROGRAMMED; % Allow this script to control the updates
 % Limited by the speed of the connection between MATLAB and the Arduino
 updatePeriod = 0.05; % Poll the sensors + gantry at 20Hz
-
+g.setSpeed(15);
 % Initialise the gantry position tracking and limits
 g.calibrate;
 
@@ -49,81 +49,84 @@ m.down; % Scan at lowest arm position
 [v1, v2, v3] = zigzagScan(g, sensor1, sensor2, sensor3);
 
 % Combine the 3 signals into one long list
-v = [v1; v2; v3];
+v = v1;%[v1; v2; v3];
 
 % Assign columns to variables
 x = v(:, 1);
 y = v(:, 2);
 z = v(:, 3);
 
+scatter3(v1(:, 2), v1(:, 1), v1(:, 3), 'k');
+hold on;
+scatter3(v2(:, 2), v2(:, 1), v2(:, 3), 'b');
+scatter3(v3(:, 2), v3(:, 1), v3(:, 3), 'o');
+
+input('press to continue');
 
 %% PROCESS THE DATA! %%
 % 1. Offset data down by base voltage of hall sensor
-z = z - 2.55;
+z = z - 2.5;
 
 % 2. Clean the data - interpolate to get a more accurate data
 [xq, yq] = meshgrid(1:5:length(x), 1:5:length(y)); % 5mm steps between each x-y value
 
-G = griddata(x, y, z, xq, yq,'cubic'); % Interpolate the data recorded according to these finer x-y values
+G = griddata(x, y, z, xq, yq, 'cubic'); % Interpolate the data recorded according to these finer x-y values
 
 % 3. Take magnitude of values
-z = abs(z);
+G = abs(G);
 
 % 4. Apply a threshold - only consider signals above that threshold
 % This cuts out all the noisy background data, we don't want to detect
 % hundreds of tiny peaks!
-for i = 1:size(z, 1)
-    for j= 1:size(z, 2)
-        if z(i,j) < 0.05
-            z(i,j) = 0;
-        end
-    end
-end
+% for i = 1:size(G, 1)
+%     for j= 1:size(G, 2)
+%         if G(i,j) < 0.05
+%             G(i,j) = 0;
+%         end
+%     end
+% end
+
+G(G < 0.03) = 0;
 
 G(isnan(G)) = 0; %This converts all NaN values to 0.
 
 treasureCoord = [];
 r=35; %radius of cercle corresponding to cup diameter
-theta = 0 : 0.01 : 2*pi;
+
+G1 = G;
 
 % Determine the epicenters from data
-while G > 1
+while max(G1, [], 'all') > 0.03
+    
     % Find max value over all elements.
-    maxPoint = max(G,[],'all'); % finds the maximum over all elements of G.
+    maxPoint = max(G1,[],'all'); % finds the maximum over all elements of G.
     
     % Returns the x-y coordinates of that peak
-    [Xindex Yindex] = find(G == maxPoint);  %returns a vector containing the linear indices of each nonzero element in array G.
+    [Xindex, Yindex] = find(G1 == maxPoint);  %returns a vector containing the linear indices of each nonzero element in array G.
     
-    %convert those indices in the x-y position
-    Xpeak=xq(Xindex);
-    Ypeak=yq(Yindex);
+    % Convert those indices in the x-y position
+    Xpeak = xq(1, Xindex);
+    Ypeak = yq(Yindex, 1);
     
     % Store those coordinates into a 2-columns matrix
-    treasureCoord(end+1,:)=[Xpeak, Ypeak];
+    treasureCoord(end+1, :) = [Ypeak, Xpeak]; % No idea why this needs x and y flipped but it works
     
-    %Erase values that are within a radius from max point
-    
-    
-    u=find(xq >(Xpeak-r) && xq < (Xpeak+r)); 
-    v=find(yq <(Ypeak-r) && yq < (Ypeak+r));
-    
-    G(u,v)= (hypot(Xpeak-xq(u))>=r)*G(u,v); %this would cut reduce the initia scquare into a circle by cutting off edges
+    % Erase values that are within a radius from max point
+    G1 = (bwdist(G1 == maxPoint) >= r) .* G1; %this would cut reduce the initia scquare into a circle by cutting off edges
 
+    h = figure;
+    surf(G1);
+    hold on
+    scatter3(treasureCoord(:, 1), treasureCoord(:, 2), ones(size(treasureCoord, 1), 1) * 10, 'ro');
+    
+    close(h);
+    
 end
 
-MAX=X(1,1);
-for i=1:3
-for j=1:3
-if MAX<= X(i,j);
-MAX=X(i,j);
-
-
-treasurePeaks = imregionalmax(G); % Returns the binary image that identifies the regional maxima in matrix
-[Xpeaks, Ypeaks] = find(treasurePeaks == 1); % Returns the x-y coordinates of those peaks
-
-treasureCoord = [Xpeaks, Ypeaks]; % Creates 2-columns matrix with x-y coordinates
-
-
+% treasurePeaks = imregionalmax(G); % Returns the binary image that identifies the regional maxima in matrix
+% [Xpeaks, Ypeaks] = find(treasurePeaks == 1); % Returns the x-y coordinates of those peaks
+% 
+% treasureCoord = [Xpeaks, Ypeaks]; % Creates 2-columns matrix with x-y coordinates
 
 % Classify from the furthest to closest 
 treasureOrder = sortrows(treasureCoord, 2, 'descend');

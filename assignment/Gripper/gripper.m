@@ -27,14 +27,14 @@ classdef gripper < handle
         function [] = release(this)
             % RELEASE will open up the claws of the gripper
          
-            writeDigitalPin(this.solenoidPin, 0);       % Switch Solenoid OFF
+            writeDigitalPin(this.a, this.solenoidPin, 0);       % Switch Solenoid OFF
             
         end
             
         function [] = grab(this)
             % GRAB will open up the claws of the gripper.
             
-            writeDigitalPin(this.solenoidPin, 1);      % Switch Solenoid ON
+            writeDigitalPin(this.a, this.solenoidPin, 1);      % Switch Solenoid ON
             
         end
     end

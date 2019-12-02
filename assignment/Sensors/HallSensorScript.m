@@ -3,7 +3,7 @@
 clear
 george =arduino("COM5","Mega2560");
 
-Hello = HallSensor(george, "A0");
+Hello = HallSensor(george, "A1");
 
 voltages= zeros(500,1);
 
