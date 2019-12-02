@@ -41,65 +41,89 @@ input('press to continue');
     
 %% SCAN FOR TREASURES! %%
 
-% g.setSpeed(15); % Make it move slower for the scanning, it's more accurate
-% m.down; % Scan at lowest arm position
-% 
-% % ZigZagScan of the entire beach.
-% % Outputs 3 matrices with signals detected from each sensor
-% [v1, v2, v3] = zigzagScan(g, sensor1, sensor2, sensor3);
-% 
-% % Combine the 3 signals into one long list
-% v = [v1; v2; v3];
-% 
-% % Assign columns to variables
-% x = v(:, 1);
-% y = v(:, 2);
-% z = v(:, 3);
-% 
-% % Offset data down by base voltage of hall sensor
-% z = z - 2.55;
-% 
-% % Take magnitude of values
-% z = abs(z);
-% 
-% %% PROCESS THE DATA! %%
-% 
-% % Apply a threshold - only consider signals above that threshold
-% % This cuts out all the noisy background data, we don't want to detect
-% % hundreds of tiny peaks!
-% for i = 1:size(z, 1)
-%     for j= 1:size(z, 2)
-%         if z(i,j) < 0.05
-%             z(i,j) = 0;
-%         end
-%     end
-% end
-% 
-% % Clean the data - interpolate to get a more accurate data
-% [xq, yq] = meshgrid(1:2:length(x), 1:2:length(y)); % 2mm steps between each x-y value
-% 
-% G = griddata(x, y, z, xq, yq,'cubic'); % Interpolate the data recorded according to these finer x-y values
-% 
-% G(isnan(G)) = 0;
-% 
-% % Determine the epicenters from data
-% 
-% treasurePeaks = imregionalmax(G); % Returns the binary image that identifies the regional maxima in matrix
-% [Xpeaks, Ypeaks] = find(treasurePeaks == 1); % Returns the x-y coordinates of those peaks
-% 
-% treasureCoord = [Xpeaks, Ypeaks]; % Creates 2-columns matrix with x-y coordinates
+g.setSpeed(15); % Make it move slower for the scanning, it's more accurate
+m.down; % Scan at lowest arm position
 
-% Randomised treasure positions for testing gantry/arm/gripper movement
-treasureCoord = [
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-    rand * g.limits(1), rand * g.limits(2);
-];
+% ZigZagScan of the entire beach.
+% Outputs 3 matrices with signals detected from each sensor
+[v1, v2, v3] = zigzagScan(g, sensor1, sensor2, sensor3);
+
+% Combine the 3 signals into one long list
+v = [v1; v2; v3];
+
+% Assign columns to variables
+x = v(:, 1);
+y = v(:, 2);
+z = v(:, 3);
+
+
+%% PROCESS THE DATA! %%
+% 1. Offset data down by base voltage of hall sensor
+z = z - 2.55;
+
+% 2. Clean the data - interpolate to get a more accurate data
+[xq, yq] = meshgrid(1:5:length(x), 1:5:length(y)); % 5mm steps between each x-y value
+
+G = griddata(x, y, z, xq, yq,'cubic'); % Interpolate the data recorded according to these finer x-y values
+
+% 3. Take magnitude of values
+z = abs(z);
+
+% 4. Apply a threshold - only consider signals above that threshold
+% This cuts out all the noisy background data, we don't want to detect
+% hundreds of tiny peaks!
+for i = 1:size(z, 1)
+    for j= 1:size(z, 2)
+        if z(i,j) < 0.05
+            z(i,j) = 0;
+        end
+    end
+end
+
+G(isnan(G)) = 0; %This converts all NaN values to 0.
+
+treasureCoord = [];
+r=35; %radius of cercle corresponding to cup diameter
+theta = 0 : 0.01 : 2*pi;
+
+% Determine the epicenters from data
+while G > 1
+    % Find max value over all elements.
+    maxPoint = max(G,[],'all'); % finds the maximum over all elements of G.
+    
+    % Returns the x-y coordinates of that peak
+    [Xindex Yindex] = find(G == maxPoint);  %returns a vector containing the linear indices of each nonzero element in array G.
+    
+    %convert those indices in the x-y position
+    Xpeak=xq(Xindex);
+    Ypeak=yq(Yindex);
+    
+    % Store those coordinates into a 2-columns matrix
+    treasureCoord(end+1,:)=[Xpeak, Ypeak];
+    
+    %Erase values that are within a radius from max point
+    
+    
+    u=find(xq >(Xpeak-r) && xq < (Xpeak+r)); 
+    v=find(yq <(Ypeak-r) && yq < (Ypeak+r));
+    
+    G(u,v)= (hypot(Xpeak-xq(u))>=r)*G(u,v); %this would cut reduce the initia scquare into a circle by cutting off edges
+
+end
+
+MAX=X(1,1);
+for i=1:3
+for j=1:3
+if MAX<= X(i,j);
+MAX=X(i,j);
+
+
+treasurePeaks = imregionalmax(G); % Returns the binary image that identifies the regional maxima in matrix
+[Xpeaks, Ypeaks] = find(treasurePeaks == 1); % Returns the x-y coordinates of those peaks
+
+treasureCoord = [Xpeaks, Ypeaks]; % Creates 2-columns matrix with x-y coordinates
+
+
 
 % Classify from the furthest to closest 
 treasureOrder = sortrows(treasureCoord, 2, 'descend');
