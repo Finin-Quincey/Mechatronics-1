@@ -215,35 +215,6 @@ classdef gantry < handle
             writeDigitalPin(this.a, this.pins.yEn, 0);
         end
         
-%         function [] = start(this, direction)
-%             
-%             % Starts the gantry moving in the given direction (see the
-%             % direction enum class)
-%             
-%             if sum(isnan(this.limits)) ~= 0
-%                 error("Gantry not calibrated yet!");
-%             end
-%             
-%             this.destination = [nan, nan];
-%             
-%             if ~isnan(direction.x)
-%                 this.startX(direction.x);
-%             else
-%                 this.stopX;
-%             end
-%             
-%             if ~isnan(direction.y)
-%                 this.startY(direction.y);
-%             else
-%                 this.stopY;
-%             end
-%             
-%             if this.mode == gantryMode.MANUAL
-%                 this.manualUpdate();
-%             end
-%             
-%         end
-        
         function this = move(this, x, y)
             % Moves the gantry by the given displacement
             this.moveTo(this.pos(1) + x, this.pos(2) + y);
