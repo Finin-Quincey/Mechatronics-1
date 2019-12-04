@@ -50,17 +50,18 @@ m.down; % Scan at lowest arm position
 [v1, v2, v3] = zigzagScan(g, sensor1, sensor2, sensor3);
 
 % Combine the 3 signals into one long list
-v = v1;%[v1; v2; v3];
+v = [v1; v2; v3];
 
 % Assign columns to variables
 x = v(:, 1);
 y = v(:, 2);
 z = v(:, 3);
 
-scatter3(v1(:, 2), v1(:, 1), v1(:, 3), 'k');
-hold on;
-scatter3(v2(:, 2), v2(:, 1), v2(:, 3), 'b');
-scatter3(v3(:, 2), v3(:, 1), v3(:, 3), 'o');
+%For test purposes, uncomment this section for visualise the results
+% scatter3(v1(:, 2), v1(:, 1), v1(:, 3), 'k');
+% hold on;
+% scatter3(v2(:, 2), v2(:, 1), v2(:, 3), 'b');
+% scatter3(v3(:, 2), v3(:, 1), v3(:, 3), 'o');
 
 input('press to continue');
 
