@@ -1,5 +1,7 @@
 classdef gantryMode
     
+    % GANTRYMODE Simple enum class to define the gantry modes
+    
     enumeration
         PROGRAMMED("programmed")
         MANUAL("manual")
