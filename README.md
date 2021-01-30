@@ -10,7 +10,7 @@ Code for the Mechatronics 1 assignment (Year 3 IDE) to control a 2-axis gantry r
   - MATLAB support package for Arduino hardware
   - Symbolic math toolbox
 
-## Useful Links
+## 🏴‍☠️ Useful Links
 - [555 timer basics](https://www.circuitbasics.com/555-timer-basics-astable-mode/)
 - [More 555 timer stuff](https://www.electronics-tutorials.ws/waveforms/555_timer.html)
 - [555 timer control voltage frequency equation](https://electronics.stackexchange.com/questions/101530/what-is-the-equation-for-the-555-timer-control-voltage)
