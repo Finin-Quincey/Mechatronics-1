@@ -1,4 +1,4 @@
-# 🦜 Mechatronics-1
+# 🏖 Mechatronics-1
 Code for the Mechatronics 1 assignment (Year 3 IDE) to control a 2-axis gantry rig to search for treasure (AKA magnets) in a 500 x 500 mm 'beach'.
 
 ![](https://github.com/Finin-Quincey/Mechatronics-1/blob/master/images/P1120889_edited.JPG)
