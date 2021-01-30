@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TREASURE HUNT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% PREPARE THE HUNT! %%
+%% PREPARE THE HUNT %%
 
 % Setup the Arduino
 clear all; % Clear all is necessary due to a weird bug in the RotaryEncoder library
@@ -16,6 +16,7 @@ pins.xInt1 = "D20";
 pins.xInt2 = "D21";
 pins.yEn = "D42";
 pins.yDir = "D43";
+
 pins.yPls = "D44";
 pins.ySw = "D45";
 pins.yInt1 = "D18";
@@ -39,7 +40,7 @@ g.calibrate;
 % Wait until key presses - see function!!!
 input('press to continue');
     
-%% SCAN FOR TREASURES! %%
+%% SCAN FOR TREASURES %%
 
 g.setSpeed(15); % Make it move slower for the scanning, it's more accurate
 m.down; % Scan at lowest arm position
@@ -49,21 +50,22 @@ m.down; % Scan at lowest arm position
 [v1, v2, v3] = zigzagScan(g, sensor1, sensor2, sensor3);
 
 % Combine the 3 signals into one long list
-v = v1;%[v1; v2; v3];
+v = [v1; v2; v3];
 
 % Assign columns to variables
 x = v(:, 1);
 y = v(:, 2);
 z = v(:, 3);
 
-scatter3(v1(:, 2), v1(:, 1), v1(:, 3), 'k');
-hold on;
-scatter3(v2(:, 2), v2(:, 1), v2(:, 3), 'b');
-scatter3(v3(:, 2), v3(:, 1), v3(:, 3), 'o');
+%For test purposes, uncomment this section for visualise the results
+% scatter3(v1(:, 2), v1(:, 1), v1(:, 3), 'k');
+% hold on;
+% scatter3(v2(:, 2), v2(:, 1), v2(:, 3), 'b');
+% scatter3(v3(:, 2), v3(:, 1), v3(:, 3), 'o');
 
 input('press to continue');
 
-%% PROCESS THE DATA! %%
+%% PROCESS THE DATA %%
 % 1. Offset data down by base voltage of hall sensor
 z = z - 2.5;
 
@@ -78,14 +80,6 @@ G = abs(G);
 % 4. Apply a threshold - only consider signals above that threshold
 % This cuts out all the noisy background data, we don't want to detect
 % hundreds of tiny peaks!
-% for i = 1:size(G, 1)
-%     for j= 1:size(G, 2)
-%         if G(i,j) < 0.05
-%             G(i,j) = 0;
-%         end
-%     end
-% end
-
 G(G < 0.03) = 0;
 
 G(isnan(G)) = 0; %This converts all NaN values to 0.
@@ -95,11 +89,15 @@ r=35; %radius of cercle corresponding to cup diameter
 
 G1 = G;
 
-% Determine the epicenters from data
+%5. Loop that finds the highest peak of the matrix, stores its coordinates, then deleted
+%all data within a radius from this peak. This is because no magnets will be
+%located this close to each other, as a cup will be covering this area.
+%Loop keeps repeating this process until all points higher that a given value are
+%deleted. 
 while max(G1, [], 'all') > 0.03
     
     % Find max value over all elements.
-    maxPoint = max(G1,[],'all'); % finds the maximum over all elements of G.
+    maxPoint = max(G1,[],'all'); 
     
     % Returns the x-y coordinates of that peak
     [Xindex, Yindex] = find(G1 == maxPoint);  %returns a vector containing the linear indices of each nonzero element in array G.
@@ -109,24 +107,22 @@ while max(G1, [], 'all') > 0.03
     Ypeak = yq(Yindex, 1);
     
     % Store those coordinates into a 2-columns matrix
-    treasureCoord(end+1, :) = [Ypeak, Xpeak]; % No idea why this needs x and y flipped but it works
+    treasureCoord(end+1, :) = [Ypeak, Xpeak]; 
     
     % Erase values that are within a radius from max point
-    G1 = (bwdist(G1 == maxPoint) >= r) .* G1; %this would cut reduce the initia scquare into a circle by cutting off edges
+    G1 = (bwdist(G1 == maxPoint) >= r) .* G1; 
 
-    h = figure;
-    surf(G1);
-    hold on
-    scatter3(treasureCoord(:, 1), treasureCoord(:, 2), ones(size(treasureCoord, 1), 1) * 10, 'ro');
-    
-    close(h);
+    %For testing purposes, uncomment this section to visualise the results
+    %at each loop
+%     h = figure;
+%     surf(G1);
+%     hold on
+%     scatter3(treasureCoord(:, 1), treasureCoord(:, 2), ones(size(treasureCoord, 1), 1) * 10, 'ro');
+%     
+%    close(h);
     
 end
 
-% treasurePeaks = imregionalmax(G); % Returns the binary image that identifies the regional maxima in matrix
-% [Xpeaks, Ypeaks] = find(treasurePeaks == 1); % Returns the x-y coordinates of those peaks
-% 
-% treasureCoord = [Xpeaks, Ypeaks]; % Creates 2-columns matrix with x-y coordinates
 
 % Classify from the furthest to closest 
 treasureOrder = sortrows(treasureCoord, 2, 'descend');
@@ -136,7 +132,7 @@ treasureOrder = sortrows(treasureCoord, 2, 'descend');
 % The number of treasures is equal to the nbr of peaks found
 numberTreasures = length(treasureCoord);
 
-%% COLLECT CUPS, GO TO TREASURES & COVER THEM! %%
+%% COLLECT CUPS, GO TO TREASURES & COVER THEM %%
 
 % Let the gantry update itself from here on, we don't need to do anything while it's moving
 g.mode = gantryMode.MANUAL;
@@ -149,18 +145,6 @@ stack1XY = [0, g.limits(2)]; % Position of first stack
 stackSpacing = [80, 0]; % Offset to get to next stack
 
 nCups = 5; % Number of cups per stack
-
-% This is now done in the arm class
-% cupHeight=(38-7.5);% 24.5mm
-% betweenCups=13; %in mm 
-% maxHeight=(4*betweenCups)+cupgrabHeight; %topcup will be grabbed at%76.5
-% heightDiff= 7.5*2; %14mm
-
-% cupHeights=[76.5 % topCup 1
-%             62.5 % Cup 2
-%             48.5 % Cup 3
-%             34.5 % Cup 4
-%             20.5]; %lastCup 5
 
 for i = 1:numberTreasures % For each treasure location
     
